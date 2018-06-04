@@ -15,10 +15,13 @@ from boto.s3.key import Key
 def read_config():
 
     try:
+        logging.info('Reading conf file')
         with open('s3backuptest_conf.json', 'rb') as conf_data:
             conf = json.load(conf_data)
 
         #Verifying configuration loaded from file
+        logging.info('Validating conf file')
+
         #Checking if all necessary parameters are available        
         for jkeys in ['retention_period', 'retention_policy', 'location', 'backup_bucket']:
             conf[jkeys]
@@ -67,6 +70,9 @@ def read_config():
 def s3_connect(bucket):
 
 #Connecting to S3 bucket using system parameters and bucketname found in conf file
+
+    logging.info('Connecting to S3 bucket')
+
     try:
         conn = boto.connect_s3()
         bucket = conn.get_bucket(bucket)
@@ -80,8 +86,11 @@ def sync_remote(retention_policy, retention_period, location):
 
 #This mode presumes that wanted state is the one in the local directory
 
+    logging.info('Will sync S3 bucket with local directory')
+
     #Determening what is the oldest a file can be
     oldest = datetime.today() + timedelta(days=-int(retention_period))
+    logging.info('Will remediate all files older than ' + datetime.strftime(oldest, '%Y-%m-%d %H:%M'))
 
     for f in os.listdir(location):
         full_path = os.path.join(location, f)
