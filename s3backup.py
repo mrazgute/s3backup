@@ -12,6 +12,7 @@ from datetime import timedelta
 import boto
 from boto.s3.key import Key
 
+#Read config file
 def read_config():
 
     try:
@@ -67,9 +68,8 @@ def read_config():
     sys.exit()
 
 
-def s3_connect(bucket):
-
 #Connecting to S3 bucket using system parameters and bucketname found in conf file
+def s3_connect(bucket):
 
     logging.info('Connecting to S3 bucket')
 
@@ -82,9 +82,8 @@ def s3_connect(bucket):
 
     return bucket 
 
-def sync_remote(retention_policy, retention_period, location):
-
 #This mode presumes that wanted state is the one in the local directory
+def sync_remote(retention_policy, retention_period, location):
 
     logging.info('Will sync S3 bucket with local directory')
 
@@ -123,9 +122,8 @@ def sync_remote(retention_policy, retention_period, location):
             k.set_contents_from_filename(full_path)
             logging.info(full_path + ' backup created')
 
-def sync_local(retention_policy, retention_period, location):
-
 #This mode presumes that wanted state is the one in the remote directory
+def sync_local(retention_policy, retention_period, location):
 
     logging.info('Will sync local directory with S3 bucket')
 
