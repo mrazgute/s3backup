@@ -82,6 +82,29 @@ def s3_connect(bucket):
 
     return bucket 
 
+
+#Handle remote or local file according to retention policy
+def remediate_file(filetype, retention_policy, filename):
+    
+    local_retention_policy = {
+                        'delete_all'    :   os.unlink,
+                        'delete_local'  :   os.unlink,
+                        'delete_remote' :   lambda a: None,
+                        'skip'          :   lambda a: None,
+    }
+    remote_retention_policy = {
+                        'delete_all'    :   bucket.delete_key,
+                        'delete_local'  :   lambda a: None,
+                        'delete_remote' :   bucket.delete_key,
+                        'skip'          :   lambda a: None,
+    }
+
+    if filetype == 'local':
+        local_retention_policy[retention_policy](filename)
+    elif filetype == 'remote':
+        remote_retention_policy[retention_policy](filename)
+
+
 #This mode presumes that wanted state is the one in the local directory
 def sync_remote(retention_policy, retention_period, location):
 
@@ -98,10 +121,9 @@ def sync_remote(retention_policy, retention_period, location):
 
         #If file is outdated - handle it according to configured retention policy
         if (creation_time < oldest):
-            local_retention_policy[retention_policy](full_path)
-
+            remediate_file('local', retention_policy, full_path)
             if remote_key:
-                remote_retention_policy[retention_policy](f)
+                remediate_file('remote', retention_policy, f)
 
             logging.info(full_path + ' is older than ' + retention_period + ' days, handling accordind to configured retention policy.')
             continue
@@ -123,6 +145,7 @@ def sync_remote(retention_policy, retention_period, location):
             k.set_contents_from_filename(full_path)
             logging.info(full_path + ' backup created')
 
+
 #This mode presumes that wanted state is the one in the remote directory
 def sync_local(retention_policy, retention_period, location):
 
@@ -140,18 +163,18 @@ def sync_local(retention_policy, retention_period, location):
 
         #If file is outdated - handle it according to configured retention policy
         if (creation_time < oldest):
-            remote_retention_policy[retention_policy](key.name)
-
+            remediate_file('remote', retention_policy, str(key.name))
             if local_key:
-                local_retention_policy[retention_policy](full_path)
+                remediate_file('local', retention_policy, full_path)
 
             logging.info(key.name + ' is older than ' + retention_period + ' days, handling accordind to configured retention policy.')
             continue
 
         if local_key:
-            #If local and remote files have the same md5 sum, then do nothing. Else update local file.
             remote_md5 = f.etag.strip('"')
             local_md5 = hashlib.md5(open(full_path, 'rb').read()).hexdigest()
+
+            #If local and remote files have the same md5 sum, then do nothing. Else update local file.
             if remote_md5 == local_md5:
                 logging.info(full_path + ' file is up to date')
             else:
@@ -163,6 +186,7 @@ def sync_local(retention_policy, retention_period, location):
             with open(full_path, "wb") as location:
                 f.get_file(location)
             logging.info(full_path + ' file created')  
+
 
 #Main code
 if __name__ == "__main__":
@@ -176,19 +200,6 @@ if __name__ == "__main__":
 
     conf = read_config()
     bucket = s3_connect(conf['backup_bucket'])
-
-    local_retention_policy = {
-                        'delete_all'    :   os.unlink,
-                        'delete_local'  :   os.unlink,
-                        'delete_remote' :   lambda: None,
-                        'skip'          :   lambda: None,
-    }
-    remote_retention_policy = {
-                        'delete_all'    :   bucket.delete_key,
-                        'delete_local'  :   lambda: None,
-                        'delete_remote' :   bucket.delete_key,
-                        'skip'          :   lambda: None,
-    }
 
     if len(sys.argv) < 2:
         print('Argument missing. Run "./s3backup.py sync_remote" to sync AWS S3 bucket with local directory or "./s3backup.py sync_local" to sync local directory with AWS S3 bucket.')
