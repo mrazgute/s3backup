@@ -1,6 +1,6 @@
 {
     "retention_period": "1",
     "retention_policy": "delete_all",
-    "location":  "/home/ec2-user/testdir",
+    "location":  "/tmp/s3backuptest",
     "backup_bucket": "junetestbkp"
 }
