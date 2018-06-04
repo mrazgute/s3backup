@@ -127,8 +127,11 @@ def sync_local(retention_policy, retention_period, location):
 
 #This mode presumes that wanted state is the one in the remote directory
 
+    logging.info('Will sync local directory with S3 bucket')
+
     #Determening what is the oldest a file can be
     oldest = datetime.today() + timedelta(days=-int(retention_period))
+    logging.info('Will remediate all files older than ' + datetime.strftime(oldest, '%Y-%m-%d %H:%M'))
 
     for key in bucket.list():
         f = bucket.get_key(key.name)
