@@ -13,18 +13,23 @@ import boto
 from boto.s3.key import Key
 
 def read_config():
+
     try:
         with open('s3backuptest_conf.json', 'rb') as conf_data:
             conf = json.load(conf_data)
+
         #Verifying configuration loaded from file
         #Checking if all necessary parameters are available        
         for jkeys in ['retention_period', 'retention_policy', 'location', 'backup_bucket']:
             conf[jkeys]
+
         #Checking if retention_period is valid
         int(conf['retention_period'])
+
         #Checking if retention policy is valid
         if not conf['retention_policy'] in ['delete_all', 'delete_remote', 'delete_local', 'skip']:
             raise ValueError('Unknown retention policy')
+
         #Checking if local directory path is valid and directory is accessable
         if not os.path.isdir(conf['location']):
             os.mkdir(location, 775)
@@ -35,7 +40,11 @@ def read_config():
             with open(testfile_path, 'r') as testfile:
                 testfile.read()
             os.unlink(testfile_path)
+
+        #Returning a dictionary containing configuration parameters
         return conf
+ 
+    #Handling faulty configuration   
     except IOError as err:
         if '.s3synctestfile.test' in str(err):
             logging.critical('Cannot access local directory. ' + str(err) + '  Exiting...')
@@ -54,70 +63,96 @@ def read_config():
         logging.critical('Error reading configuration file. Exiting...')
     sys.exit()
 
+
 def s3_connect(bucket):
+
+#Connecting to S3 bucket using system parameters and bucketname found in conf file
     try:
         conn = boto.connect_s3()
         bucket = conn.get_bucket(bucket)
     except:
         logging.critical('Connection to AWS failed, exiting...')
         sys.exit()
+
     return bucket 
 
 def sync_remote(retention_policy, retention_period, location):
+
 #This mode presumes that wanted state is the one in the local directory
+
+    #Determening what is the oldest a file can be
     oldest = datetime.today() + timedelta(days=-int(retention_period))
+
     for f in os.listdir(location):
         full_path = os.path.join(location, f)
         creation_time = datetime.fromtimestamp(os.path.getctime(full_path))
         remote_key = bucket.get_key(f)
+
+        #If file is outdated - handle it according to configured retention policy
         if (creation_time < oldest):
             local_retention_policy[retention_policy](full_path)
+
             if remote_key:
                 remote_retention_policy[retention_policy](f)
+
             logging.info(full_path + ' is older than ' + retention_period + ' days, handling accordind to configured retention policy.')
-        else:
-            if remote_key:
-                remote_md5 = remote_key.etag.strip('"')
-                local_md5 = hashlib.md5(open(full_path, 'rb').read()).hexdigest()
-                if remote_md5 == local_md5:
-                    logging.info(full_path + ' backup is up to date')
-                else:
-                    remote_key.set_contents_from_filename(full_path)
-                    logging.info(full_path + ' backup updated')
+
+        elif remote_key:
+            remote_md5 = remote_key.etag.strip('"')
+            local_md5 = hashlib.md5(open(full_path, 'rb').read()).hexdigest()
+
+            #If local and remote files have the same md5 sum, then do nothing. Else update remote file.
+            if remote_md5 == local_md5:
+                logging.info(full_path + ' backup is up to date')
             else:
-                k = Key(bucket)
-                k.key = f
-                k.set_contents_from_filename(full_path)
-                logging.info(full_path + ' backup created')
+                remote_key.set_contents_from_filename(full_path)
+                logging.info(full_path + ' backup updated')
+        else:
+            #If remote file does not exist - create it.
+            k = Key(bucket)
+            k.key = f
+            k.set_contents_from_filename(full_path)
+            logging.info(full_path + ' backup created')
 
 def sync_local(retention_policy, retention_period, location):
+
 #This mode presumes that wanted state is the one in the remote directory
+
+    #Determening what is the oldest a file can be
     oldest = datetime.today() + timedelta(days=-int(retention_period))
+
     for key in bucket.list():
         f = bucket.get_key(key.name)
         creation_time = datetime.strptime(str(f.date), '%a, %d %b %Y %H:%M:%S %Z')
         full_path = os.path.join(location, key.name)
         local_key = os.path.exists(full_path)
+
+        #If file is outdated - handle it according to configured retention policy
         if (creation_time < oldest):
             remote_retention_policy[retention_policy](key.name)
+
             if local_key:
                 local_retention_policy[retention_policy](full_path)
+
             logging.info(key.name + ' is older than ' + retention_period + ' days, handling accordind to configured retention policy.')
-        else:
-            if local_key:
-                remote_md5 = f.etag.strip('"')
-                local_md5 = hashlib.md5(open(full_path, 'rb').read()).hexdigest()
-                if remote_md5 == local_md5:
-                    logging.info(full_path + ' file is up to date')
-                else:
-                    with open(full_path, "wb") as location:
-                        f.get_file(location)
-                    logging.info(full_path + ' file updated')
+
+        elif local_key:
+            #If local and remote files have the same md5 sum, then do nothing. Else update local file.
+            remote_md5 = f.etag.strip('"')
+            local_md5 = hashlib.md5(open(full_path, 'rb').read()).hexdigest()
+            if remote_md5 == local_md5:
+                logging.info(full_path + ' file is up to date')
             else:
                 with open(full_path, "wb") as location:
                     f.get_file(location)
-                logging.info(full_path + ' file created')  
+                logging.info(full_path + ' file updated')
+        else:
+            #If local file does not exist - create it.
+            with open(full_path, "wb") as location:
+                f.get_file(location)
+            logging.info(full_path + ' file created')  
 
+#Initializing logging
 try:
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO, filename='s3backuptest.log')
 except OSError as err:
