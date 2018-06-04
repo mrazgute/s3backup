@@ -1,5 +1,5 @@
 {
-    "retention_period": "1",
+    "retention_period": "7",
     "retention_policy": "delete_all",
     "location":  "/tmp/s3backuptest",
     "backup_bucket": "junetestbkp"
