@@ -2,7 +2,7 @@
 
 ### -----INTRO-----
 
-This script will syncronize AWS S3 bucket and a local repository (which one is primary source can be configured). Script will remediate all the files which were created earlier N days before the run (N is set in configuration file).
+This script will syncronize AWS S3 bucket and a local repository (which one is primary source can be configured). Script will remediate all the files which were modified earlier N days before the run (N is set in configuration file).
 
 ### -----SETTING UP-----
 

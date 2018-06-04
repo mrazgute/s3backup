@@ -1,6 +1,6 @@
 {
     "retention_period": "1",
-    "retention_policy": "delete_local",
+    "retention_policy": "delete_all",
     "location":  "/tmp/s3backuptest",
     "backup_bucket": "junetestbkp"
 }
