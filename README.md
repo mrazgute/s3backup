@@ -20,10 +20,10 @@ Depending on configuration, this script can work in a several ways. File `s3back
 Available settings:
 + retention_period - how old can file be (in days) before it should be deleted;
 + retention_policy - what to do with old files:
- - delete_all		- delete the files from S3 bucket and local directory;
- - delete_remote	- delete the file from S3 bucket, skip the one in local directory;
- - delete_local		- skip the file in S3 bucket, delete the one in local directory;
- - skip			- skip the files in S3 bucket and local repository;
+   - delete_all		- delete the files from S3 bucket and local directory;
+   - delete_remote	- delete the file from S3 bucket, skip the one in local directory;
+   - delete_local	- skip the file in S3 bucket, delete the one in local directory;
+   - skip		- skip the files in S3 bucket and local repository;
 + location	   - full path to remote folder you want to sync (default `/tmp/s3backuptest/`);
 + backup_bucket    - name of the AWS S3 bucket you are using.
 
