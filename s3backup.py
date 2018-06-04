@@ -11,9 +11,6 @@ from datetime import timedelta
 import boto
 from boto.s3.key import Key
 
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO, filename='/var/log/s3backuptest.log')
-logging.info('Script started.')
-
 def read_config():
     try:
         with open('/etc/s3backuptest_conf.json', 'rb') as conf_data:
@@ -104,7 +101,10 @@ def sync_local(retention_policy, retention_period, location):
                 f.get_file(location)
                 location.close()
                 logging.info(full_path + ' file created')  
-    
+
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO, filename='/var/log/s3backuptest.log')
+logging.info('Script started.')
+
 conf = read_config()
 bucket = s3_connect(conf['backup_bucket'])
 
@@ -121,14 +121,13 @@ remote_retention_policy = {
                     'skip'          :   lambda *args: None,
 }
 
-try:
-    if (sys.argv[1] == 'sync_local'):
-        sync_local(conf['retention_policy'], conf['retention_period'], conf['location'])
-    elif (sys.argv[1] == 'sync_remote'):
-        sync_remote(conf['retention_policy'], conf['retention_period'], conf['location'])
-    else:
-        print('Invalid argument. Please launch the script with the argument sync_local to sync AWS S3 bucket with local directory or sync_remote to sync local directory with AWS S3 bucket.')
-except:
-    print('Please launch the script with the argument sync_local to sync AWS S3 bucket with local directory or sync_remote to sync local directory with AWS S3 bucket.')
+if len(sys.argv) < 2:
+    print('Argument missing. Run "./s3backup.py sync_local" to sync AWS S3 bucket with local directory or "./s3backup.py sync_remote" to sync local directory with AWS S3 bucket.')
+elif (sys.argv[1] == 'sync_local'):
+    sync_local(conf['retention_policy'], conf['retention_period'], conf['location'])
+elif (sys.argv[1] == 'sync_remote'):
+    sync_remote(conf['retention_policy'], conf['retention_period'], conf['location'])
+else:
+    print('Invalid argument. Run "./s3backup.py sync_local" to sync AWS S3 bucket with local directory or "./s3backup.py sync_remote" to sync local directory with AWS S3 bucket.')
 
 logging.info('Script finished')
