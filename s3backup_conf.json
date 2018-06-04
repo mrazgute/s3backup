@@ -1,0 +1,6 @@
+{
+    "retention_period": "7",
+    "retention_policy": "skip",
+    "location":  "/home/ec2-user/testdir/",
+    "backup_bucket": "junetestbkp"
+}
