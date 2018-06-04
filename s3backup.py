@@ -104,8 +104,9 @@ def sync_remote(retention_policy, retention_period, location):
                 remote_retention_policy[retention_policy](f)
 
             logging.info(full_path + ' is older than ' + retention_period + ' days, handling accordind to configured retention policy.')
+            continue
 
-        elif remote_key:
+        if remote_key:
             remote_md5 = remote_key.etag.strip('"')
             local_md5 = hashlib.md5(open(full_path, 'rb').read()).hexdigest()
 
@@ -145,8 +146,9 @@ def sync_local(retention_policy, retention_period, location):
                 local_retention_policy[retention_policy](full_path)
 
             logging.info(key.name + ' is older than ' + retention_period + ' days, handling accordind to configured retention policy.')
+            continue
 
-        elif local_key:
+        if local_key:
             #If local and remote files have the same md5 sum, then do nothing. Else update local file.
             remote_md5 = f.etag.strip('"')
             local_md5 = hashlib.md5(open(full_path, 'rb').read()).hexdigest()
@@ -162,36 +164,39 @@ def sync_local(retention_policy, retention_period, location):
                 f.get_file(location)
             logging.info(full_path + ' file created')  
 
-#Initializing logging
-try:
-    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO, filename='s3backuptest.log')
-except OSError as err:
-    print('Could not create/access logfile: ' + err)
-logging.info('Script started.')
+#Main code
+if __name__ == "__main__":
 
-conf = read_config()
-bucket = s3_connect(conf['backup_bucket'])
+    #Initializing logging
+    try:
+        logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO, filename='s3backuptest.log')
+    except OSError as err:
+        print('Could not create/access logfile: ' + err)
+    logging.info('Script started.')
 
-local_retention_policy = {
-                    'delete_all'    :   os.unlink,
-                    'delete_local'  :   os.unlink,
-                    'delete_remote' :   lambda: None,
-                    'skip'          :   lambda: None,
-}
-remote_retention_policy = {
-                    'delete_all'    :   bucket.delete_key,
-                    'delete_local'  :   lambda: None,
-                    'delete_remote' :   bucket.delete_key,
-                    'skip'          :   lambda: None,
-}
+    conf = read_config()
+    bucket = s3_connect(conf['backup_bucket'])
 
-if len(sys.argv) < 2:
-    print('Argument missing. Run "./s3backup.py sync_remote" to sync AWS S3 bucket with local directory or "./s3backup.py sync_local" to sync local directory with AWS S3 bucket.')
-elif (sys.argv[1] == 'sync_local'):
-    sync_local(conf['retention_policy'], conf['retention_period'], conf['location'])
-elif (sys.argv[1] == 'sync_remote'):
-    sync_remote(conf['retention_policy'], conf['retention_period'], conf['location'])
-else:
-    print('Invalid argument. Run "./s3backup.py sync_remote" to sync AWS S3 bucket with local directory or "./s3backup.py sync_local" to sync local directory with AWS S3 bucket.')
+    local_retention_policy = {
+                        'delete_all'    :   os.unlink,
+                        'delete_local'  :   os.unlink,
+                        'delete_remote' :   lambda: None,
+                        'skip'          :   lambda: None,
+    }
+    remote_retention_policy = {
+                        'delete_all'    :   bucket.delete_key,
+                        'delete_local'  :   lambda: None,
+                        'delete_remote' :   bucket.delete_key,
+                        'skip'          :   lambda: None,
+    }
 
-logging.info('Script finished')
+    if len(sys.argv) < 2:
+        print('Argument missing. Run "./s3backup.py sync_remote" to sync AWS S3 bucket with local directory or "./s3backup.py sync_local" to sync local directory with AWS S3 bucket.')
+    elif (sys.argv[1] == 'sync_local'):
+        sync_local(conf['retention_policy'], conf['retention_period'], conf['location'])
+    elif (sys.argv[1] == 'sync_remote'):
+        sync_remote(conf['retention_policy'], conf['retention_period'], conf['location'])
+    else:
+        print('Invalid argument. Run "./s3backup.py sync_remote" to sync AWS S3 bucket with local directory or "./s3backup.py sync_local" to sync local directory with AWS S3 bucket.')
+
+    logging.info('Script finished')
